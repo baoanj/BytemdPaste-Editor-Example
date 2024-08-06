@@ -15,10 +15,14 @@
     .bytemd {
       height: 100vh;
     }
+    #pick {
+      display: none;
+    }
   </style>
 </head>
 
 <body>
+  <button id="pick" onclick="pickDir()">选择存储文件夹</button>
   <script src="plugin-gfm.js"></script>
   <script src="plugin-highlight.js"></script>
   <script src="bytemd-paste.js"></script>
