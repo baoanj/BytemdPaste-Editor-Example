@@ -47,33 +47,32 @@ async function getHandle() {
     document.querySelector('#pick').style.display = 'inline'
     return
   }
-  const permission = await verifyPermission(dirHandle)
-  console.log('permission:', permission)
-  if (!permission) dirHandle = null
-  else readData()
+
+  // Check if permission was already granted. If so, return true.
+  if ((await dirHandle.queryPermission({ mode: 'readwrite' })) === 'granted') {
+    readData()
+  } else {
+    document.querySelector('#perm').style.display = 'inline'
+  }
 }
 
-// Failed to execute 'showDirectoryPicker' on 'Window': Must be handling a user gesture to show a file picker.
-// 必须手动触发
 async function pickDir() {
+  // Must be handling a user gesture to show a file picker.
+  // 必须手动触发
   dirHandle = await window.showDirectoryPicker()
   await add({ id: 'copyN-dir', handle: dirHandle })
   document.querySelector('#pick').style.display = 'none'
   readData()
 }
 
-async function verifyPermission(handle) {
-  const options = { mode: 'readwrite' }
-  // Check if permission was already granted. If so, return true.
-  if ((await handle.queryPermission(options)) === 'granted') {
-    return true
-  }
+async function reqPerm() {
   // Request permission. If the user grants permission, return true.
-  if ((await handle.requestPermission(options)) === 'granted') {
-    return true
+  // User activation is required to request permissions.
+  // 必须手动触发
+  if ((await dirHandle.requestPermission({ mode: 'readwrite' })) === 'granted') {
+    document.querySelector('#perm').style.display = 'none'
+    readData()
   }
-  // The user didn't grant permission, so return false.
-  return false
 }
 
 async function openIndexDB() {

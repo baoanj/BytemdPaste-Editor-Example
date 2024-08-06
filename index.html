@@ -18,11 +18,15 @@
     #pick {
       display: none;
     }
+    #perm {
+      display: none;
+    }
   </style>
 </head>
 
 <body>
   <button id="pick" onclick="pickDir()">选择存储文件夹</button>
+  <button id="perm" onclick="reqPerm()">获取访问权限</button>
   <script src="plugin-gfm.js"></script>
   <script src="plugin-highlight.js"></script>
   <script src="bytemd-paste.js"></script>
