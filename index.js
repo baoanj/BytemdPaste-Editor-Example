@@ -177,7 +177,6 @@ function init(value) {
   const editor = BytemdPaste({
     target: document.body,
     props: {
-      // value: localStorage.getItem(key) || '',
       value,
       plugins: [
         bytemdPluginGfm({
@@ -190,7 +189,32 @@ function init(value) {
             taskText: '待办事项'
           }
         }),
-        bytemdPluginHighlight()
+        bytemdPluginHighlight(),
+        myPlugin({
+          // useCodemirror(codemirror) {
+          //   console.log(codemirror)
+          // },
+          async usePasteImage(file) {
+            try {
+              const formData = new FormData()
+              formData.append('image', file)
+              const response = await fetch('http://localhost:3000/upload', {
+                method: 'POST',
+                body: formData
+              })
+              const result = await response.json()
+              if (result.success) {
+                console.log(`上传成功！URL: ${result.url}`)
+                document.execCommand('insertHTML', false, `![image](http://localhost:3000${result.url})`)
+              }
+            } catch (error) {
+              console.error('上传失败:', error)
+            }
+          },
+          // useMarkdownBody(markdownBody) {
+          //   console.log(markdownBody)
+          // }
+        })
       ],
       locale: {
         bold: '粗体',
