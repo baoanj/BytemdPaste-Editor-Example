@@ -41,6 +41,7 @@ async function writeData(data) {
  * @param {File} file 图片 File 对象
  */
 async function saveImageToImagesDir(file) {
+  console.log('saveImageToImagesDir', dirHandle, file)
   if (
     !dirHandle ||
     !(file instanceof File) ||
