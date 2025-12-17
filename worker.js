@@ -49,10 +49,16 @@ async function saveImageToImagesDir(file) {
     return
   }
 
+  const permission1 = await dirHandle.queryPermission({ mode: 'readwrite' });
+  console.log('permission1', permission1)
+
   // 1. 获取 / 创建 images 目录
   const imagesDirHandle = await dirHandle.getDirectoryHandle('images', {
     create: true
   })
+
+  const permission2 = await imagesDirHandle.queryPermission({ mode: 'readwrite' });
+  console.log('permission2', permission2)
 
   const filename = Date.now() + '-' + file.name
 

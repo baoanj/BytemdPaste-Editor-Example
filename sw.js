@@ -50,7 +50,8 @@ function shouldSkipCache(request) {
   // 过滤条件（根据需求扩展）
   return (
     request.method === 'POST' || // 过滤所有POST请求
-    url.pathname.includes('upload')
+    url.pathname.includes('upload') ||
+    url.pathname.startsWith('/sw.js')
   )
 }
 
