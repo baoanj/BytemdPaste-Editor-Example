@@ -6,8 +6,15 @@ const pasteWorker = new Worker('worker.js')
 
 pasteWorker.onmessage = e => {
   console.log(e)
-  if (e.type === 'error') {
-    alert(e.message)
+  if (e.data?.type === 'error') {
+    alert(e.data.message)
+  }
+  if (e.data?.type === 'image') {
+    document.execCommand(
+      'insertHTML',
+      false,
+      `![${e.data.filename}](/images/${e.data.filename})`
+    )
   }
 }
 
@@ -51,6 +58,17 @@ async function getHandle() {
   // Check if permission was already granted. If so, return true.
   if ((await dirHandle.queryPermission({ mode: 'readwrite' })) === 'granted') {
     readData()
+
+    pasteWorker.postMessage({
+      type: 'dirHandle',
+      dirHandle
+    })
+
+    const reg = await navigator.serviceWorker.ready;
+
+    reg.active.postMessage(
+      { dirHandle }
+    );
   } else {
     document.querySelector('#perm').style.display = 'inline'
   }
@@ -69,7 +87,9 @@ async function reqPerm() {
   // Request permission. If the user grants permission, return true.
   // User activation is required to request permissions.
   // 必须手动触发
-  if ((await dirHandle.requestPermission({ mode: 'readwrite' })) === 'granted') {
+  if (
+    (await dirHandle.requestPermission({ mode: 'readwrite' })) === 'granted'
+  ) {
     document.querySelector('#perm').style.display = 'none'
     readData()
   }
@@ -196,21 +216,19 @@ function init(value) {
           // },
           async usePasteImage(file) {
             try {
-              const formData = new FormData()
-              formData.append('image', file)
-              const response = await fetch('http://localhost:3000/upload', {
-                method: 'POST',
-                body: formData
+              console.log(file)
+              pasteWorker.postMessage({
+                type: 'saveImage',
+                value: file
               })
-              const result = await response.json()
-              if (result.success) {
-                console.log(`上传成功！URL: ${result.url}`)
-                document.execCommand('insertHTML', false, `![image](http://localhost:3000${result.url})`)
-              }
+              // if (result.success) {
+              //   console.log(`上传成功！URL: ${result.url}`)
+              //   document.execCommand('insertHTML', false, `![image](http://localhost:3000${result.url})`)
+              // }
             } catch (error) {
               console.error('上传失败:', error)
             }
-          },
+          }
           // useMarkdownBody(markdownBody) {
           //   console.log(markdownBody)
           // }

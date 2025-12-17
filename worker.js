@@ -1,4 +1,5 @@
 var fileHandle
+var dirHandle
 
 onmessage = e => {
   console.log(e)
@@ -8,8 +9,14 @@ onmessage = e => {
   if (e.data?.type === 'fileHandle') {
     fileHandle = e.data.fileHandle
   }
+  if (e.data?.type === 'dirHandle') {
+    dirHandle = e.data.dirHandle
+  }
   if (e.data?.type === 'save') {
     writeData(e.data.value)
+  }
+  if (e.data?.type === 'saveImage') {
+    saveImageToImagesDir(e.data.value)
   }
 }
 
@@ -27,4 +34,36 @@ async function writeData(data) {
       postMessage({ type: 'error', message: '保存失败' })
     }
   }
+}
+
+/**
+ * 将图片 File 保存到指定目录下的 images 子目录
+ * @param {File} file 图片 File 对象
+ */
+async function saveImageToImagesDir(file) {
+  if (
+    !dirHandle ||
+    !(file instanceof File) ||
+    !file.type.startsWith('image/')
+  ) {
+    return
+  }
+
+  // 1. 获取 / 创建 images 目录
+  const imagesDirHandle = await dirHandle.getDirectoryHandle('images', {
+    create: true
+  })
+
+  const filename = Date.now() + '-' + file.name
+
+  // 2. 获取 / 创建目标文件
+  const fileHandle = await imagesDirHandle.getFileHandle(filename, {
+    create: true
+  })
+
+  // 3. 写入文件
+  const writable = await fileHandle.createWritable()
+  await writable.write(file)
+  await writable.close()
+  postMessage({ type: 'image', filename })
 }
