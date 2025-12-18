@@ -30,12 +30,10 @@ run()
 
 async function readData() {
   if (dirHandle) {
-    console.log('[Index] dirHandle', dirHandle)
+    await navigator.serviceWorker.ready
+    console.log('[Index] serviceWorker ready', navigator.serviceWorker.controller)
 
-    const reg = await navigator.serviceWorker.ready
-    console.log('[Index] serviceWorker ready', reg)
-
-    reg.active.postMessage({ type: 'dirHandle', dirHandle })
+    navigator.serviceWorker.controller?.postMessage({ type: 'dirHandle', dirHandle })
 
     pasteWorker.postMessage({
       type: 'dirHandle',
