@@ -123,6 +123,11 @@ async function handleImageRequest(pathname) {
   }
 
   try {
+    const permission1 = await dirHandle.queryPermission({
+      mode: 'readwrite'
+    })
+    console.log('[SW] permission1', permission1)
+
     const filename = pathname.replace('/images/', '')
 
     // 1. images 目录
