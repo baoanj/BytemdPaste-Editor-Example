@@ -10,7 +10,7 @@
 /* ================= 配置区 ================= */
 
 // ⚠️ 每次发布必须修改版本号
-const SW_VERSION = 'v2'
+const SW_VERSION = 'v3'
 
 const CACHE_PREFIX = 'm2-cache'
 const CACHE_NAME = `${CACHE_PREFIX}-${SW_VERSION}`
@@ -63,9 +63,11 @@ self.addEventListener('activate', event => {
 // 页面第二次加载时缓存，第三次访问才可离线，任意资源
 self.addEventListener('fetch', event => {
   const req = event.request
+  console.log('[SW] fetch', req.url)
 
   const url = new URL(req.url)
-  if (req.method !== 'GET' || url.origin !== self.location.origin) {
+  if (req.method === 'POST' || url.origin !== self.location.origin) {
+    console.log('[SW] fetch pass through', req.url)
     return fetch(req) // 直接走网络请求
   }
 
