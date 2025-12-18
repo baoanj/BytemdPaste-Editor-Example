@@ -2,7 +2,8 @@ var fileHandle
 var dirHandle
 
 onmessage = e => {
-  console.log(e)
+  console.log('[Worker] message', e)
+
   if (e.data?.type === 'init') {
     // readData(e.data.key)
   }
@@ -41,7 +42,8 @@ async function writeData(data) {
  * @param {File} file 图片 File 对象
  */
 async function saveImageToImagesDir(file) {
-  console.log('saveImageToImagesDir', dirHandle, file)
+  console.log('[Worker] saveImageToImagesDir', dirHandle, file)
+
   if (
     !dirHandle ||
     !(file instanceof File) ||
@@ -50,20 +52,18 @@ async function saveImageToImagesDir(file) {
     return
   }
 
-  const permission1 = await dirHandle.queryPermission({ mode: 'readwrite' });
-  console.log('permission1', permission1)
-
   // 1. 获取 / 创建 images 目录
   const imagesDirHandle = await dirHandle.getDirectoryHandle('images', {
     create: true
   })
 
-  const permission2 = await imagesDirHandle.queryPermission({ mode: 'readwrite' });
-  console.log('permission2', permission2)
-
-  const filename = Date.now() + '-' + file.name
+  const permission2 = await imagesDirHandle.queryPermission({
+    mode: 'readwrite'
+  })
+  console.log('[Worker] permission2', permission2)
 
   // 2. 获取 / 创建目标文件
+  const filename = Date.now() + '-' + file.name
   const fileHandle = await imagesDirHandle.getFileHandle(filename, {
     create: true
   })

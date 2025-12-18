@@ -12,12 +12,15 @@
     body {
       margin: 0;
     }
+
     .bytemd {
       height: 100vh;
     }
+
     #pick {
       display: none;
     }
+
     #perm {
       display: none;
     }
@@ -43,6 +46,10 @@
           // registration failed
           console.log('Registration failed with ' + error)
         })
+
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        alert('Service Worker 控制权已更改，请刷新页面以使用最新的功能。');
+      });
     }
   </script>
 </body>

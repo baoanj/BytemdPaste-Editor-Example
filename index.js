@@ -5,7 +5,7 @@ document.title = key + ' - ' + document.title
 const pasteWorker = new Worker('worker.js')
 
 pasteWorker.onmessage = e => {
-  console.log(e)
+  console.log('[Index] form Worker', e)
   if (e.data?.type === 'error') {
     alert(e.data.message)
   }
@@ -64,11 +64,11 @@ async function getHandle() {
       dirHandle
     })
 
-    const reg = await navigator.serviceWorker.ready;
+    const reg = await navigator.serviceWorker.ready
 
-    reg.active.postMessage(
-      { dirHandle }
-    );
+    console.log('[Index] serviceWorker ready', reg)
+
+    reg.active.postMessage({ type: 'dirHandle', dirHandle })
   } else {
     document.querySelector('#perm').style.display = 'inline'
   }
@@ -216,7 +216,7 @@ function init(value) {
           // },
           async usePasteImage(file) {
             try {
-              console.log(file)
+              console.log('[Index] usePasteImage', file)
               pasteWorker.postMessage({
                 type: 'saveImage',
                 value: file

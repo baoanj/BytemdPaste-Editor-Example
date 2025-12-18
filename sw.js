@@ -1,59 +1,119 @@
+/*
+ * production-ready Service Worker
+ * - 强制更新（skipWaiting + clients.claim）
+ * - sw.js 禁缓存前提下可确保必然升级
+ * - 版本化 Cache
+ * - Stale-While-Revalidate 策略
+ * - 安全兜底与可观测日志
+ */
+
+/* ================= 配置区 ================= */
+
+// ⚠️ 每次发布必须修改版本号
+const SW_VERSION = 'v2'
+
+const CACHE_PREFIX = 'm2-cache'
+const CACHE_NAME = `${CACHE_PREFIX}-${SW_VERSION}`
+
+// 需要预缓存的核心资源（尽量少）
+const PRECACHE_URLS = ['/']
+
 let dirHandle
+
+/* ================= install ================= */
 
 // 非必须，可在首次访问时缓存指定资源，但仍需监听 fetch 事件来响应缓存
 self.addEventListener('install', event => {
+  console.log('[SW] install', SW_VERSION)
+
+  // 强制跳过 waiting
+  self.skipWaiting()
+
   event.waitUntil(
-    caches.open('v1').then(cache => {
-      return cache.addAll(['/'])
+    caches.open(CACHE_NAME).then(cache => {
+      return cache.addAll(PRECACHE_URLS)
     })
+  )
+})
+
+/* ================= activate ================= */
+
+self.addEventListener('activate', event => {
+  console.log('[SW] activate', SW_VERSION)
+
+  event.waitUntil(
+    Promise.all([
+      // 清理旧缓存
+      caches
+        .keys()
+        .then(keys =>
+          Promise.all(
+            keys
+              .filter(key => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME)
+              .map(key => caches.delete(key))
+          )
+        ),
+
+      // 立即接管页面
+      self.clients.claim()
+    ])
   )
 })
 
 // 页面第二次加载时缓存，第三次访问才可离线，任意资源
 self.addEventListener('fetch', event => {
-  if (event.request.url.indexOf('http') !== 0) return
+  const req = event.request
 
-  // 过滤需要跳过的请求
-  if (shouldSkipCache(event.request)) {
-    return fetch(event.request) // 直接走网络请求
+  const url = new URL(req.url)
+  if (req.method !== 'GET' || url.origin !== self.location.origin) {
+    return fetch(req) // 直接走网络请求
   }
-
-  const url = new URL(event.request.url)
 
   if (url.pathname.startsWith('/images/')) {
     event.respondWith(handleImageRequest(url.pathname))
     return
   }
 
-  event.respondWith(
-    // 先响应缓存资源，并发起请求更新缓存，保证访问最新数据
-    // 但有个缺陷：如果数据更新了，需要多刷新一次才能看到新数据
-    caches.match(event.request).then(matchCache => {
-      fetch(event.request).then(response => {
-        caches.open('v1').then(function (cache) {
-          cache.put(event.request, response)
-        })
-      })
-      return matchCache || fetch(event.request)
-    })
-  )
+  event.respondWith(handleRequest(req))
 })
 
-self.onmessage = async e => {
-  dirHandle = e.data?.dirHandle
+/* ================= error safety ================= */
+
+self.addEventListener('error', event => {
+  console.error('[SW] error', event.error)
+})
+
+self.addEventListener('unhandledrejection', event => {
+  console.error('[SW] unhandledrejection', event.reason)
+})
+
+async function handleRequest(request) {
+  const cache = await caches.open(CACHE_NAME)
+
+  // 1. 先查缓存
+  const matchCache = await cache.match(request)
+
+  // 2. 后台更新
+  const fetchPromise = fetch(request)
+    .then(response => {
+      if (response && response.ok) {
+        cache.put(request, response.clone())
+      }
+      return response
+    })
+    .catch(() => matchCache)
+
+  // 3. 优先返回缓存，没有则等网络
+  return matchCache || fetchPromise
 }
 
-// 判断是否需要跳过缓存
-function shouldSkipCache(request) {
-  const url = new URL(request.url)
+self.addEventListener('message', event => {
+  console.log('[SW] message', event.data)
 
-  // 过滤条件（根据需求扩展）
-  return (
-    request.method === 'POST' || // 过滤所有POST请求
-    url.pathname.includes('upload') ||
-    url.pathname.startsWith('/sw.js')
-  )
-}
+  if (event.data?.type === 'dirHandle') {
+    dirHandle = event.data?.dirHandle
+  }
+})
 
 async function handleImageRequest(pathname) {
   if (!dirHandle) {
@@ -80,6 +140,7 @@ async function handleImageRequest(pathname) {
       }
     })
   } catch (err) {
+    console.error('[SW] images error', err)
     return new Response('Image not found', { status: 404 })
   }
 }
