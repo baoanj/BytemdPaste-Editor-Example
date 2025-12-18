@@ -57,18 +57,17 @@ async function getHandle() {
 
   // Check if permission was already granted. If so, return true.
   if ((await dirHandle.queryPermission({ mode: 'readwrite' })) === 'granted') {
+    const reg = await navigator.serviceWorker.ready
+    console.log('[Index] serviceWorker ready', reg)
+
     readData()
+
+    reg.active.postMessage({ type: 'dirHandle', dirHandle })
 
     pasteWorker.postMessage({
       type: 'dirHandle',
       dirHandle
     })
-
-    const reg = await navigator.serviceWorker.ready
-
-    console.log('[Index] serviceWorker ready', reg)
-
-    reg.active.postMessage({ type: 'dirHandle', dirHandle })
   } else {
     document.querySelector('#perm').style.display = 'inline'
   }

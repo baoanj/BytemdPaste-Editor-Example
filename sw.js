@@ -80,11 +80,11 @@ self.addEventListener('fetch', event => {
 /* ================= error safety ================= */
 
 self.addEventListener('error', event => {
-  console.error('[SW] error', event.error)
+  console.log('[SW] error', event.error)
 })
 
 self.addEventListener('unhandledrejection', event => {
-  console.error('[SW] unhandledrejection', event.reason)
+  console.log('[SW] unhandledrejection', event.reason)
 })
 
 async function handleRequest(request) {
@@ -94,7 +94,7 @@ async function handleRequest(request) {
   const matchCache = await cache.match(request)
 
   // 2. 后台更新
-  const fetchPromise = fetch(request)
+  const fetchPromise = fetch(new Request(request, { cache: 'no-store' }))
     .then(response => {
       if (response && response.ok) {
         cache.put(request, response.clone())
