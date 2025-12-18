@@ -4,8 +4,11 @@ document.title = key + ' - ' + document.title
 
 const pasteWorker = new Worker('worker.js')
 
+var dirHandle
+var db
+
 pasteWorker.onmessage = e => {
-  console.log('[Index] form Worker', e)
+  console.log('[Index] from Worker', e)
   if (e.data?.type === 'error') {
     alert(e.data.message)
   }
@@ -18,8 +21,13 @@ pasteWorker.onmessage = e => {
   }
 }
 
-var dirHandle
-var db
+navigator.serviceWorker.addEventListener('message', event => {
+  console.log('[Index] from SW:', event.data)
+  if (event.data?.type === 'dirHandle') {
+    console.log('[Index] to SW:', navigator.serviceWorker.controller)
+    navigator.serviceWorker.controller?.postMessage({ type: 'dirHandle', dirHandle })
+  }
+})
 
 async function run() {
   await openIndexDB()

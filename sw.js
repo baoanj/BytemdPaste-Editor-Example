@@ -18,7 +18,8 @@ const CACHE_NAME = `${CACHE_PREFIX}-${SW_VERSION}`
 // 需要预缓存的核心资源（尽量少）
 const PRECACHE_URLS = ['/']
 
-let dirHandle
+let dirHandleMap = {}
+let promiseInsMap = {}, promiseResMap = {}
 
 /* ================= install ================= */
 
@@ -72,7 +73,25 @@ self.addEventListener('fetch', event => {
   }
 
   if (url.pathname.startsWith('/images/')) {
-    event.respondWith(handleImageRequest(url.pathname))
+    if (!dirHandleMap?.[event.clientId]) {
+      event.waitUntil(
+        (async () => {
+          const client = await self.clients.get(event.clientId)
+          if (client) {
+            console.log('[SW] postMessage dirHandle')
+            if (!promiseInsMap) promiseInsMap = {}
+            promiseInsMap[event.clientId] = new Promise(r => promiseResMap[event.clientId] = r)
+            client.postMessage({
+              type: 'dirHandle'
+            })
+            setTimeout(() => {
+              promiseResMap[event.clientId]?.()
+            }, 2000);
+          }
+        })()
+      )
+    }
+    event.respondWith(handleImageRequest(url.pathname, event.clientId))
     return
   }
 
@@ -113,17 +132,22 @@ self.addEventListener('message', event => {
   console.log('[SW] message', event.data)
 
   if (event.data?.type === 'dirHandle') {
-    dirHandle = event.data?.dirHandle
+    if (!dirHandleMap) dirHandleMap = {}
+    dirHandleMap[event.source.id] = event.data?.dirHandle
+    promiseResMap[event.clientId]?.()
   }
 })
 
-async function handleImageRequest(pathname) {
-  if (!dirHandle) {
+async function handleImageRequest(pathname, clientId) {
+  if (!dirHandleMap?.[clientId]) {
+    await promiseInsMap?.[clientId]
+  }
+  if (!dirHandleMap?.[clientId]) {
     return new Response('FS handle not ready', { status: 503 })
   }
 
   try {
-    const permission1 = await dirHandle.queryPermission({
+    const permission1 = await dirHandleMap?.[clientId].queryPermission({
       mode: 'readwrite'
     })
     console.log('[SW] permission1', permission1)
@@ -131,7 +155,7 @@ async function handleImageRequest(pathname) {
     const filename = pathname.replace('/images/', '')
 
     // 1. images 目录
-    const imagesDir = await dirHandle.getDirectoryHandle('images')
+    const imagesDir = await dirHandleMap?.[clientId].getDirectoryHandle('images')
 
     // 2. 文件句柄
     const fileHandle = await imagesDir.getFileHandle(filename)
