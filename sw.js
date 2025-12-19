@@ -74,19 +74,19 @@ self.addEventListener('fetch', event => {
 
   if (url.pathname.startsWith('/images/')) {
     if (!dirHandleMap?.[event.clientId]) {
+      if (!promiseInsMap) promiseInsMap = {}
+      promiseInsMap[event.clientId] = new Promise(r => promiseResMap[event.clientId] = r)
+      setTimeout(() => {
+        promiseResMap[event.clientId]?.()
+      }, 2000);
       event.waitUntil(
         (async () => {
           const client = await self.clients.get(event.clientId)
           if (client) {
-            console.log('[SW] postMessage dirHandle')
-            if (!promiseInsMap) promiseInsMap = {}
-            promiseInsMap[event.clientId] = new Promise(r => promiseResMap[event.clientId] = r)
+            console.log('[SW] postMessage dirHandle', event.clientId)
             client.postMessage({
               type: 'dirHandle'
             })
-            setTimeout(() => {
-              promiseResMap[event.clientId]?.()
-            }, 2000);
           }
         })()
       )
@@ -129,7 +129,7 @@ async function handleRequest(request) {
 }
 
 self.addEventListener('message', event => {
-  console.log('[SW] message', event.data)
+  console.log('[SW] message', event.source?.id, event.data)
 
   if (event.data?.type === 'dirHandle') {
     if (!dirHandleMap) dirHandleMap = {}
