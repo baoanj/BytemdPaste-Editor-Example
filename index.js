@@ -1,3 +1,5 @@
+import usePython from './python.js'
+
 let key = new URLSearchParams(location.search).get('key') || 'key'
 
 document.title = key + ' - ' + document.title
@@ -218,7 +220,7 @@ function init(value) {
         bytemdPluginHighlight(),
         myPlugin({
           useCodemirror(codemirror) {
-            window.usePython(codemirror)
+            usePython(codemirror)
             codemirror.defineMode('py', codemirror.modes.python)
           },
           async usePasteImage(file) {
