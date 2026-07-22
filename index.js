@@ -218,8 +218,8 @@ function init(value) {
         bytemdPluginHighlight(),
         myPlugin({
           useCodemirror(codemirror) {
-            console.log(codemirror)
-            codemirror.defineMode('python', codemirror.modes.python)
+            window.usePython(codemirror)
+            codemirror.defineMode('py', codemirror.modes.python)
           },
           async usePasteImage(file) {
             try {
