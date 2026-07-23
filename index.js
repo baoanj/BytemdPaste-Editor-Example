@@ -82,7 +82,7 @@ async function getHandle() {
   }
 }
 
-async function pickDir() {
+window.pickDir = async function () {
   // Must be handling a user gesture to show a file picker.
   // 必须手动触发
   dirHandle = await window.showDirectoryPicker()
@@ -91,7 +91,7 @@ async function pickDir() {
   readData()
 }
 
-async function reqPerm() {
+window.reqPerm = async function () {
   // Request permission. If the user grants permission, return true.
   // User activation is required to request permissions.
   // 必须手动触发
