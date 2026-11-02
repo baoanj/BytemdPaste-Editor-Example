@@ -10,7 +10,7 @@
 /* ================= 配置区 ================= */
 
 // ⚠️ 每次发布必须修改版本号
-const SW_VERSION = 'v3'
+const SW_VERSION = 'v4'
 
 const CACHE_PREFIX = 'm2-cache'
 const CACHE_NAME = `${CACHE_PREFIX}-${SW_VERSION}`
@@ -112,7 +112,7 @@ async function handleRequest(request) {
   const cache = await caches.open(CACHE_NAME)
 
   // 1. 先查缓存
-  const matchCache = await cache.match(request)
+  const matchCache = await cache.match(request， { ignoreSearch: true })
 
   // 2. 后台更新
   const fetchPromise = fetch(new Request(request, { cache: 'no-store' }))
@@ -122,7 +122,9 @@ async function handleRequest(request) {
       }
       return response
     })
-    .catch(() => matchCache)
+
+  // 关键：后台更新挂在事件生命周期上，避免 Worker 提前终止
+  event.waitUntil(fetchPromise.catch(() => {}))
 
   // 3. 优先返回缓存，没有则等网络
   return matchCache || fetchPromise
