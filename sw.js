@@ -10,7 +10,7 @@
 /* ================= 配置区 ================= */
 
 // ⚠️ 每次发布必须修改版本号
-const SW_VERSION = 'v4'
+const SW_VERSION = 'v5'
 
 const CACHE_PREFIX = 'm2-cache'
 const CACHE_NAME = `${CACHE_PREFIX}-${SW_VERSION}`
