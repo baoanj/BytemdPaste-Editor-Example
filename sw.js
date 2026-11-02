@@ -112,7 +112,7 @@ async function handleRequest(request) {
   const cache = await caches.open(CACHE_NAME)
 
   // 1. 先查缓存
-  const matchCache = await cache.match(request， { ignoreSearch: true })
+  const matchCache = await cache.match(request, { ignoreSearch: true })
 
   // 2. 后台更新
   const fetchPromise = fetch(new Request(request, { cache: 'no-store' }))
