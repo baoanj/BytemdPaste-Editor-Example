@@ -10,7 +10,7 @@
 /* ================= 配置区 ================= */
 
 // ⚠️ 每次发布必须修改版本号
-const SW_VERSION = 'v5'
+const SW_VERSION = 'v6'
 
 const CACHE_PREFIX = 'm2-cache'
 const CACHE_NAME = `${CACHE_PREFIX}-${SW_VERSION}`
@@ -95,7 +95,7 @@ self.addEventListener('fetch', event => {
     return
   }
 
-  event.respondWith(handleRequest(req))
+  event.respondWith(handleRequest(req, event))
 })
 
 /* ================= error safety ================= */
@@ -108,7 +108,7 @@ self.addEventListener('unhandledrejection', event => {
   console.log('[SW] unhandledrejection', event.reason)
 })
 
-async function handleRequest(request) {
+async function handleRequest(request, event) {
   const cache = await caches.open(CACHE_NAME)
 
   // 1. 先查缓存
