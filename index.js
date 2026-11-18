@@ -15,11 +15,7 @@ pasteWorker.onmessage = e => {
     alert(e.data.message)
   }
   if (e.data?.type === 'image') {
-    document.execCommand(
-      'insertHTML',
-      false,
-      `![${e.data.filename}](/images/${e.data.filename})`
-    )
+    //
   }
 }
 
@@ -223,26 +219,22 @@ function init(value) {
             usePython(codemirror)
             codemirror.defineMode('py', codemirror.modes.python)
           },
-          async usePasteImage(file) {
-            try {
-              console.log('[Index] usePasteImage', file)
-              pasteWorker.postMessage({
-                type: 'saveImage',
-                value: file
-              })
-              // if (result.success) {
-              //   console.log(`上传成功！URL: ${result.url}`)
-              //   document.execCommand('insertHTML', false, `![image](http://localhost:3000${result.url})`)
-              // }
-            } catch (error) {
-              console.error('上传失败:', error)
-            }
-          }
-          // useMarkdownBody(markdownBody) {
-          //   console.log(markdownBody)
-          // }
         })
       ],
+      uploadImages: async (files) => {
+        const time = Date.now()
+        files.forEach(file => {
+          pasteWorker.postMessage({
+            type: 'saveImage',
+            value: { file, time }
+          })
+        })
+        return files.map(file => ({
+          url: `/images/${time + '-' + file.name}`,
+          alt: file.name,  // 可选
+          title: undefined,    // 可选
+        }))
+      },
       locale: {
         bold: '粗体',
         boldText: '粗体文本',

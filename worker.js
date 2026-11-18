@@ -41,7 +41,7 @@ async function writeData(data) {
  * 将图片 File 保存到指定目录下的 images 子目录
  * @param {File} file 图片 File 对象
  */
-async function saveImageToImagesDir(file) {
+async function saveImageToImagesDir({ file, time }) {
   console.log('[Worker] saveImageToImagesDir', dirHandle, file)
 
   if (
@@ -63,7 +63,7 @@ async function saveImageToImagesDir(file) {
   console.log('[Worker] permission2', permission2)
 
   // 2. 获取 / 创建目标文件
-  const filename = Date.now() + '-' + file.name
+  const filename = time + '-' + file.name
   const fileHandle = await imagesDirHandle.getFileHandle(filename, {
     create: true
   })
