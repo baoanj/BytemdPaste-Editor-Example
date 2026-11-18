@@ -10,13 +10,14 @@
 /* ================= 配置区 ================= */
 
 // ⚠️ 每次发布必须修改版本号
-const SW_VERSION = 'v7'
+const SW_VERSION = 'v8'
 
 const CACHE_PREFIX = 'm2-cache'
 const CACHE_NAME = `${CACHE_PREFIX}-${SW_VERSION}`
 
 // 需要预缓存的核心资源（尽量少）
-const PRECACHE_URLS = ['/']
+// PWA 安装清单与图标，确保安装后离线可启动
+const PRECACHE_URLS = ['/', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png']
 
 // 图片请求路径前缀与本地目录名
 const IMAGE_PREFIX = '/images/'
@@ -88,8 +89,15 @@ self.addEventListener('install', event => {
   self.skipWaiting()
 
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(PRECACHE_URLS)
+    caches.open(CACHE_NAME).then(async cache => {
+      // 逐项预缓存：单项失败不影响整体安装（运行时 SWR 会兜底补缓存）
+      await Promise.allSettled(
+        PRECACHE_URLS.map(url =>
+          cache.add(url).catch(err => {
+            console.warn('[SW] precache failed', url, err)
+          })
+        )
+      )
     })
   )
 })

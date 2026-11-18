@@ -18,7 +18,8 @@ onmessage = e => {
       imagesDirHandle = null
       break
     case 'save':
-      queueSave(data.value)
+      // 消息内携带文件句柄，避免页面切文件后写错目标
+      queueSave(data.value, data.fileHandle || fileHandle)
       break
     case 'saveImage':
       saveImage(data.value)
@@ -37,25 +38,25 @@ function postError(message) {
 let saveChain = Promise.resolve()
 let pendingValue = null
 
-function queueSave(value) {
+function queueSave(value, handle) {
   pendingValue = value
   saveChain = saveChain
     .then(async () => {
-      if (pendingValue === null || !fileHandle) return
+      if (pendingValue === null) return
       const v = pendingValue
       pendingValue = null
-      await writeData(v)
+      await writeData(v, handle)
     })
     .catch(err => postError('保存失败：' + (err && err.message ? err.message : err)))
 }
 
-async function writeData(data) {
-  if (!fileHandle) {
+async function writeData(data, handle) {
+  if (!handle) {
     postError('文件句柄未就绪，内容未保存')
     return
   }
 
-  const writable = await fileHandle.createWritable()
+  const writable = await handle.createWritable()
   try {
     await writable.write(data)
     await writable.close()

@@ -2,12 +2,12 @@ import usePython from './python.js'
 
 /* ================= 常量 ================= */
 
-const key = new URLSearchParams(location.search).get('key') || 'key'
-
 const DB_NAME = 'copyn'
 const DB_VERSION = 1
 const STORE_NAME = 'handles'
 const DIR_HANDLE_ID = 'copyN-dir'
+
+const FILE_EXT = '.md'
 
 /* ================= 状态 ================= */
 
@@ -16,8 +16,8 @@ const pasteWorker = new Worker('worker.js')
 let dirHandle = null
 let db = null
 let editor = null
-
-document.title = key + ' - ' + document.title
+// 当前打开的文件：{ name, handle }
+let currentFile = null
 
 /* ================= Worker 消息 ================= */
 
@@ -73,19 +73,122 @@ async function readData() {
   navigator.serviceWorker.controller?.postMessage({ type: 'dirHandle', dirHandle })
   pasteWorker.postMessage({ type: 'dirHandle', dirHandle })
 
-  try {
-    const fileHandle = await dirHandle.getFileHandle(`copyN-${key}.md`, {
-      create: true
-    })
-    pasteWorker.postMessage({ type: 'fileHandle', fileHandle })
+  // 加载左侧文件列表并自动打开第一个文件
+  await refreshFileList()
+}
 
-    const file = await fileHandle.getFile()
-    init(await file.text())
-  } catch (err) {
-    console.error('[Index] readData failed', err)
-    alert('读取文档失败：' + (err?.message || err))
+/* ================= 文件列表：左侧边栏 ================= */
+
+const fileListEl = document.querySelector('#file-list')
+const newFileBtn = document.querySelector('#new-file')
+
+// 扫描目录下所有 .md 文件，渲染到侧边栏，并自动打开文件
+async function refreshFileList() {
+  const files = []
+
+  for await (const entry of dirHandle.values()) {
+    if (entry.kind === 'file' && entry.name.toLowerCase().endsWith(FILE_EXT)) {
+      files.push(entry)
+    }
+  }
+
+  files.sort((a, b) => a.name.localeCompare(b.name))
+  renderFileList(files)
+
+  // 当前文件已不存在（被外部删除）则清空编辑区
+  if (currentFile && !files.some(f => f.name === currentFile.name)) {
+    currentFile = null
+    document.title = 'BytemdPaste - Markdown 编辑器'
+    ensureEditor()
+    editor.$set({ value: '' })
+  }
+
+  // 尚未打开任何文件时，自动打开第一个
+  if (!currentFile && files.length > 0) {
+    openFile(files[0].name, files[0].handle || files[0])
   }
 }
+
+function renderFileList(files) {
+  if (!fileListEl) return
+  fileListEl.textContent = ''
+
+  files.forEach(file => {
+    const li = document.createElement('li')
+    li.textContent = file.name.replace(FILE_EXT, '')
+    li.title = file.name
+    li.dataset.name = file.name
+    if (currentFile && currentFile.name === file.name) {
+      li.classList.add('active')
+    }
+    li.addEventListener('click', () => openFile(file.name, file.handle || file))
+    fileListEl.appendChild(li)
+  })
+}
+
+function setActiveItem(name) {
+  if (!fileListEl) return
+  fileListEl.querySelectorAll('li').forEach(li => {
+    li.classList.toggle('active', li.dataset.name === name)
+  })
+}
+
+/* ================= 打开 / 新建文件 ================= */
+
+async function openFile(name, handle) {
+  if (!handle) return
+
+  try {
+    const file = await handle.getFile()
+    const text = await file.text()
+
+    currentFile = { name, handle }
+    document.title = name + ' - BytemdPaste'
+    setActiveItem(name)
+
+    pasteWorker.postMessage({ type: 'fileHandle', fileHandle: handle })
+    ensureEditor()
+    editor.$set({ value: text })
+  } catch (err) {
+    console.error('[Index] openFile failed', name, err)
+    alert('打开文件失败：' + (err?.message || err))
+  }
+}
+
+// 新建文件：用户手势触发（prompt 需 user activation）
+async function createFile() {
+  if (!dirHandle) return
+
+  const input = (window.prompt('请输入文件名（不含扩展名）') || '').trim()
+  if (!input) return
+
+  // 清理非法字符与潜在路径穿越
+  const name = input.replace(/[\\/:*?"<>|]/g, '-').replace(/^\.+/, '') + FILE_EXT
+  if (!name || name === FILE_EXT) {
+    alert('非法文件名')
+    return
+  }
+
+  try {
+    // 防覆盖：同名文件已存在则提示，不静默覆盖
+    try {
+      await dirHandle.getFileHandle(name)
+      alert('文件已存在：' + name)
+      return
+    } catch (err) {
+      if (err?.name !== 'NotFoundError') throw err
+    }
+
+    const handle = await dirHandle.getFileHandle(name, { create: true })
+    await refreshFileList()
+    await openFile(name, handle)
+  } catch (err) {
+    console.error('[Index] createFile failed', err)
+    alert('新建文件失败：' + (err?.message || err))
+  }
+}
+
+if (newFileBtn) newFileBtn.addEventListener('click', createFile)
 
 async function getHandle() {
   dirHandle = await idbGet(DIR_HANDLE_ID)
@@ -177,17 +280,16 @@ function idbPut(id, handle) {
 
 /* ================= 编辑器 ================= */
 
-function init(value) {
-  // 编辑器已存在（如重新选择目录/重新授权后再次加载）：仅同步内容
-  if (editor) {
-    editor.$set({ value })
-    return
-  }
+/* ================= 编辑器 ================= */
+
+// 编辑器仅创建一次，内容切换通过 $set 完成
+function ensureEditor() {
+  if (editor) return
 
   editor = BytemdPaste({
-    target: document.body,
+    target: document.querySelector('#editor'),
     props: {
-      value,
+      value: '',
       plugins: [
         bytemdPluginGfm({
           locale: {
@@ -285,9 +387,19 @@ function init(value) {
   editor.$on('change', e => {
     const value = e.detail.value
     editor.$set({ value })
+
+    // 未打开文件时不保存
+    if (!currentFile) return
+
     clearTimeout(timer)
     timer = setTimeout(() => {
-      pasteWorker.postMessage({ type: 'save', key, value })
+      // 携带当前文件句柄，避免切文件竞态写到旧文件
+      pasteWorker.postMessage({
+        type: 'save',
+        key: currentFile.name,
+        value,
+        fileHandle: currentFile.handle
+      })
     }, 1000)
   })
 }
